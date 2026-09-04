@@ -1,0 +1,340 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local TeleportService = game:GetService("TeleportService")
+
+local plr = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+
+local Portal1, Portal2
+local GREEN = Color3.fromRGB(40, 255, 70)
+local LIME = Color3.fromRGB(170, 255, 90)
+local GRAY = Color3.fromRGB(150, 154, 160)
+local DGRAY = Color3.fromRGB(78, 80, 86)
+local MGRAY = Color3.fromRGB(110, 114, 120)
+
+-- Очистка
+pcall(function()
+	for _, t in ipairs(plr.Backpack:GetChildren()) do
+		if t:IsA("Tool") and (t.Name:find("Portal") or t.Name:find("Rick")) then t:Destroy() end
+	end
+	if plr.Character then
+		for _, t in ipairs(plr.Character:GetChildren()) do
+			if t:IsA("Tool") and (t.Name:find("Portal") or t.Name:find("Rick")) then t:Destroy() end
+		end
+	end
+	local g = plr.PlayerGui:FindFirstChild("PortalGunGui")
+	if g then g:Destroy() end
+end)
+
+-- Пушка
+local tool = Instance.new("Tool")
+tool.Name = "Portal Gun C-137"
+tool.RequiresHandle = true
+tool.CanBeDropped = false
+
+local function part(size, color, mat, parent)
+	local p = Instance.new("Part")
+	p.Size = size
+	p.Color = color
+	p.Material = mat
+	p.CanCollide = false
+	p.Massless = true
+	p.Parent = parent
+	return p
+end
+
+local function weld(a, b, c0)
+	local w = Instance.new("Weld")
+	w.Part0 = a
+	w.Part1 = b
+	w.C0 = c0
+	w.Parent = a
+end
+
+local handle = part(Vector3.new(0.42, 1.28, 0.48), DGRAY, Enum.Material.Metal, tool)
+handle.Name = "Handle"
+
+weld(handle, part(Vector3.new(0.92, 0.88, 1.85), GRAY, Enum.Material.Metal, tool), CFrame.new(0, 0.72, -0.35))
+weld(handle, part(Vector3.new(0.7, 0.32, 1.35), MGRAY, Enum.Material.Metal, tool), CFrame.new(0, 1.28, -0.45))
+weld(handle, part(Vector3.new(0.78, 0.78, 0.7), MGRAY, Enum.Material.Metal, tool), CFrame.new(0, 0.72, -1.45))
+
+local barrel = part(Vector3.new(0.95, 0.42, 0.42), GREEN, Enum.Material.Neon, tool)
+barrel.Shape = Enum.PartType.Cylinder
+weld(handle, barrel, CFrame.new(0, 0.72, -2.05) * CFrame.Angles(0, math.rad(90), 0))
+
+local muzzle = part(Vector3.new(0.22, 0.62, 0.62), LIME, Enum.Material.Neon, tool)
+muzzle.Shape = Enum.PartType.Cylinder
+weld(handle, muzzle, CFrame.new(0, 0.72, -2.55) * CFrame.Angles(0, math.rad(90), 0))
+
+weld(handle, part(Vector3.new(0.22, 0.38, 0.85), GREEN, Enum.Material.Neon, tool), CFrame.new(0, 1.18, -0.55))
+weld(handle, part(Vector3.new(0.7, 0.7, 0.35), DGRAY, Enum.Material.Metal, tool), CFrame.new(0, 0.7, 0.7))
+weld(handle, part(Vector3.new(0.48, 0.18, 0.54), MGRAY, Enum.Material.Metal, tool), CFrame.new(0, -0.7, 0))
+
+local light = Instance.new("PointLight")
+light.Color = GREEN
+light.Brightness = 3
+light.Range = 10
+light.Parent = muzzle
+tool.Grip = CFrame.new(0, -0.4, 0)
+
+-- Пушка не пропадает
+local function giveGun()
+	if tool.Parent \~= plr.Backpack and (not plr.Character or tool.Parent \~= plr.Character) then
+		tool.Parent = plr.Backpack
+	end
+end
+
+giveGun()
+
+plr.CharacterRemoving:Connect(function()
+	tool.Parent = nil
+end)
+
+plr.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	giveGun()
+end)
+
+-- Звук
+local function PlaySound(id, vol, parent)
+	pcall(function()
+		local s = Instance.new("Sound")
+		s.SoundId = "rbxassetid://" .. id
+		s.Volume = vol or 1
+		s.Parent = parent or workspace
+		s:Play()
+		Debris:AddItem(s, 3)
+	end)
+end
+
+-- Портал
+local function createPortal(hit, name)
+	local n = hit.Normal
+	local pos = hit.Position + n * 0.28
+	local cf = CFrame.lookAt(pos, pos + n)
+
+	local portal = Instance.new("Part")
+	portal.Name = name
+	portal.Anchored = true
+	portal.CanCollide = false
+	portal.CanTouch = true
+	portal.Size = Vector3.new(6.2, 8.2, 1.2)
+	portal.CFrame = cf
+	portal.Transparency = 1
+	portal.Parent = workspace
+
+	local disc = Instance.new("Part")
+	disc.Anchored = true
+	disc.CanCollide = false
+	disc.Material = Enum.Material.Neon
+	disc.Color = GREEN
+	disc.Transparency = 0.25
+	disc.Size = Vector3.new(6, 8, 0.22)
+	disc.CFrame = cf
+	disc.Parent = portal
+	local sm = Instance.new("SpecialMesh")
+	sm.MeshType = Enum.MeshType.Sphere
+	sm.Scale = Vector3.new(1, 1, 0.22)
+	sm.Parent = disc
+
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = LIME
+	ring.Transparency = 0.05
+	ring.Size = Vector3.new(0.38, 8.35, 6.35)
+	ring.CFrame = cf * CFrame.Angles(0, math.rad(90), 0)
+	ring.Parent = portal
+
+	local swirl = Instance.new("Part")
+	swirl.Name = "Swirl"
+	swirl.Anchored = true
+	swirl.CanCollide = false
+	swirl.Material = Enum.Material.Neon
+	swirl.Color = Color3.fromRGB(10, 90, 25)
+	swirl.Transparency = 0.4
+	swirl.Size = Vector3.new(5.2, 6.8, 0.18)
+	swirl.CFrame = cf
+	swirl.Parent = portal
+	local sm2 = Instance.new("SpecialMesh")
+	sm2.MeshType = Enum.MeshType.Sphere
+	sm2.Scale = Vector3.new(1, 1, 0.18)
+	sm2.Parent = swirl
+
+	local plgt = Instance.new("PointLight")
+	plgt.Color = GREEN
+	plgt.Brightness = 5
+	plgt.Range = 16
+	plgt.Parent = disc
+
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxassetid://241650934"
+	pe.Rate = 70
+	pe.Lifetime = NumberRange.new(0.4, 1.1)
+	pe.Speed = NumberRange.new(0.4, 2.2)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.RotSpeed = NumberRange.new(-180, 180)
+	pe.Color = ColorSequence.new(LIME, Color3.fromRGB(20, 80, 30))
+	pe.Size = NumberSequence.new(1.1, 0)
+	pe.LightEmission = 0.8
+	pe.Parent = disc
+
+	PlaySound(12222208, 1.2, portal)
+	return portal
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	for _, p in ipairs({Portal1, Portal2}) do
+		if p and p:FindFirstChild("Swirl") then
+			p.Swirl.CFrame = p.Swirl.CFrame * CFrame.Angles(0, 0, math.rad(220 * dt))
+		end
+	end
+end)
+
+local function hrp()
+	return plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+end
+
+local function teleportTo(target)
+	local r = hrp()
+	if not (r and target) then return end
+	PlaySound(12222216, 1.5, r)
+	r.CFrame = target.CFrame * CFrame.new(0, 0, 3.4)
+end
+
+local function setupTouch(portal, getTarget)
+	if not portal then return end
+	portal.Touched:Connect(function(hit)
+		if hit.Parent == plr.Character and hit.Parent:FindFirstChild("Humanoid") then
+			local t = getTarget()
+			if t then teleportTo(t) end
+		end
+	end)
+end
+
+local function shoot(first)
+	local char = plr.Character
+	if not char then return end
+	local params = RaycastParams.new()
+	params.FilterDescendantsInstances = {char, tool}
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local result = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 800, params)
+	if not result then return end
+	PlaySound(12222200, 1.3, muzzle)
+	if first then
+		if Portal1 then Portal1:Destroy() end
+		Portal1 = createPortal(result, "Portal1")
+		setupTouch(Portal1, function() return Portal2 end)
+	else
+		if Portal2 then Portal2:Destroy() end
+		Portal2 = createPortal(result, "Portal2")
+		setupTouch(Portal2, function() return Portal1 end)
+	end
+end
+
+tool.Activated:Connect(function()
+	shoot(true)
+end)
+
+-- Меню
+local gui = Instance.new("ScreenGui")
+gui.Name = "PortalGunGui"
+gui.ResetOnSpawn = false
+gui.Parent = plr:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 310)
+frame.Position = UDim2.new(0.5, -100, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 26)
+title.BackgroundTransparency = 1
+title.Text = "Portal C-137"
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = GREEN
+title.TextSize = 15
+title.Parent = frame
+
+local function btn(text, y, color)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(0, 176, 0, 26)
+	b.Position = UDim2.new(0.5, -88, 0, y)
+	b.Text = text
+	b.Font = Enum.Font.Gotham
+	b.BackgroundColor3 = color
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.TextSize = 13
+	b.Parent = frame
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	return b
+end
+
+local function box(placeholder, y)
+	local t = Instance.new("TextBox")
+	t.Size = UDim2.new(0, 176, 0, 26)
+	t.Position = UDim2.new(0.5, -88, 0, y)
+	t.PlaceholderText = placeholder
+	t.Text = ""
+	t.Font = Enum.Font.Gotham
+	t.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
+	t.TextSize = 12
+	t.ClearTextOnFocus = false
+	t.Parent = frame
+	Instance.new("UICorner", t).CornerRadius = UDim.new(0, 6)
+	return t
+end
+
+local p1 = btn("Портал 1", 35, Color3.fromRGB(0, 140, 55))
+local p2 = btn("Портал 2", 65, Color3.fromRGB(0, 100, 40))
+local del = btn("Удалить порталы", 95, Color3.fromRGB(150, 35, 35))
+
+local coordBox = box("x, y, z", 130)
+local coordBtn = btn("ТП по координатам", 160, Color3.fromRGB(40, 95, 170))
+
+local idBox = box("Place ID", 195)
+local idBtn = btn("ТП в Place", 225, Color3.fromRGB(100, 55, 160))
+
+local copyBtn = btn("Скопировать XYZ", 260, Color3.fromRGB(50, 50, 60))
+
+p1.MouseButton1Click:Connect(function() shoot(true) end)
+p2.MouseButton1Click:Connect(function() shoot(false) end)
+
+del.MouseButton1Click:Connect(function()
+	if Portal1 then Portal1:Destroy() Portal1 = nil end
+	if Portal2 then Portal2:Destroy() Portal2 = nil end
+end)
+
+coordBtn.MouseButton1Click:Connect(function()
+	local r = hrp()
+	if not r then return end
+	local a, b, c = coordBox.Text:match("([%-%.%d]+)%s*,%s*([%-%.%d]+)%s*,%s*([%-%.%d]+)")
+	if not a then a, b, c = coordBox.Text:match("([%-%.%d]+)%s+([%-%.%d]+)%s+([%-%.%d]+)") end
+	a, b, c = tonumber(a), tonumber(b), tonumber(c)
+	if a and b and c then r.CFrame = CFrame.new(a, b, c) end
+end)
+
+copyBtn.MouseButton1Click:Connect(function()
+	local r = hrp()
+	if r then
+		local p = r.Position
+		coordBox.Text = string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z)
+	end
+end)
+
+idBtn.MouseButton1Click:Connect(function()
+	local id = tonumber(idBox.Text:gsub("%s", ""))
+	if id then pcall(function() TeleportService:Teleport(id, plr) end) end
+end)
+
+print("Portal C-137 loaded")x
